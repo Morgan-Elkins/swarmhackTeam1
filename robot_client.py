@@ -74,6 +74,8 @@ class Robot:
         self.orientation = 0
         self.neighbours = {}
 
+        self.parent = False
+
         self.teleop = False
         self.state = RobotState.STOP
         self.ir_readings = []
@@ -238,6 +240,46 @@ async def get_data(robot):
         print(f"{type(e).__name__}: {e}")
 
 
+
+def random_mode(robot):
+
+    object_wait_const = 0.5
+
+    if robot.state == RobotState.FORWARDS:
+        left = right = robot.MAX_SPEED
+        if (time.time() - robot.turn_time > object_wait_const) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
+            robot.turn_time = time.time()
+
+            robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
+
+    elif robot.state == RobotState.BACKWARDS:
+        left = right = -robot.MAX_SPEED
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+
+    elif robot.state == RobotState.LEFT:
+        left = -robot.MAX_SPEED
+        right = robot.MAX_SPEED
+        if time.time() - robot.turn_time > object_wait_const:
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+
+    elif robot.state == RobotState.RIGHT:
+        left = robot.MAX_SPEED
+        right = -robot.MAX_SPEED
+        if time.time() - robot.turn_time > object_wait_const:
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+
+    elif robot.state == RobotState.STOP:
+        left = right = 0
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+    
+    return(left,right)
+            
+
+
 async def send_commands(robot):
     try:
         # Turn off LEDs and motors when killed
@@ -265,32 +307,7 @@ async def send_commands(robot):
             elif robot.state == RobotState.STOP:
                 left = right = 0
         else:
-            # Autonomous mode
-            if robot.state == RobotState.FORWARDS:
-                left = right = robot.MAX_SPEED
-                if (time.time() - robot.turn_time > 0.5) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
-                    robot.turn_time = time.time()
-                    robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
-            elif robot.state == RobotState.BACKWARDS:
-                left = right = -robot.MAX_SPEED
-                robot.turn_time = time.time()
-                robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.LEFT:
-                left = -robot.MAX_SPEED
-                right = robot.MAX_SPEED
-                if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
-                    robot.turn_time = time.time()
-                    robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.RIGHT:
-                left = robot.MAX_SPEED
-                right = -robot.MAX_SPEED
-                if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
-                    robot.turn_time = time.time()
-                    robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.STOP:
-                left = right = 0
-                robot.turn_time = time.time()
-                robot.state = RobotState.FORWARDS
+            left, right = random_mode(robot)
 
         message["set_motor_speeds"] = {}
         message["set_motor_speeds"]["left"] = left
