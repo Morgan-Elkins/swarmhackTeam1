@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from turtle import Vec2D
 from robots import robots, server_none, server_york, server_manchester, server_sheffield
 
 import asyncio
@@ -12,6 +13,7 @@ from enum import Enum
 import time
 import random
 import inspect
+import math
 
 import colorama
 from colorama import Fore
@@ -276,6 +278,48 @@ async def get_data(robot):
         print(f"{type(e).__name__}: {e}")
 
 
+#Psudocode found at https://vergenet.net/~conrad/boids/pseudocode.html
+
+#Function to move each robot/boid to new location
+def moveBoidsToNewPostion(robot):
+    v1 = rule1(robot)
+    v2 = rule2(robot)
+    v3 = rule3(robot)
+    velocity = robot.orientation + v1 + v2 + v3
+    return velocity
+    
+    
+#Attractive force - boids go to percived center of mass 
+def rule1(robot):
+    perceivedCenter = 0
+    bearings = robot["neighbours"]["bearing"]
+    for bearing in bearings:
+        perceivedCenter += + bearing
+        
+    perceivedCenter = perceivedCenter / (len(bearings) -1)
+    return (perceivedCenter - robot.orientation) /100
+
+#Pull force - boids keep a small distance from each other
+def rule2(robot):
+    c = 0
+    bearings = robot["neighbours"]["bearing"]
+    for bearing in bearings:
+        if abs(robot.orientation - bearing) < 100:
+            c += - (robot.orientation - bearing)
+    return c
+
+#Match velocity of nearby boids
+def rule3(robot):
+    perceivedVelocity = 0
+    bearings = robot["neighbours"]["bearing"]
+    for bearing in bearings:
+        perceivedVelocity += bearing
+    perceivedVelocity = perceivedVelocity / (len(bearings) -1)
+    
+    return (perceivedVelocity - robot.orientation) / 8
+
+
+
 # Send motor and LED commands to robot
 # This function also performs the obstacle avoidance and teleop algorithm state machines
 async def send_commands(robot):
@@ -305,6 +349,10 @@ async def send_commands(robot):
                 right = -robot.MAX_SPEED * 0.8
             elif robot.state == RobotState.STOP:
                 left = right = 0
+        elif True: # TODO replace with if all robots are connected
+            vel = moveBoidsToNewPostion(robot)
+            left = robot.MAX_SPEED * math.sin(vel)
+            right = robot.MAX_SPEED * math.cos(vel)
         else:
             # Autonomous mode
             if robot.state == RobotState.FORWARDS:
@@ -449,7 +497,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(0, 0)
+    robot_ids = range(31, 35)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
