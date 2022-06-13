@@ -1,3 +1,4 @@
 Rotation towards a set vector/direction
-Spiral ramndom search
+Spiral random search
 Find edge of circle not connected to more than one node
+Communicate amount of bots needed and amount of bots got

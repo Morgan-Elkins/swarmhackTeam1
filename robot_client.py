@@ -62,6 +62,12 @@ class RobotState(Enum):
     STOP = 5
 
 
+class RobotMode(Enum):
+    SEARCH = 1
+    WAIT = 1
+    POSITION = 3
+    HEADTOTARGET = 4
+
 class Robot:
 
     BAT_LOW_VOLTAGE = 3.6
@@ -74,8 +80,8 @@ class Robot:
         self.orientation = 0
         self.neighbours = {}
 
-        self.parent = False
-
+        self.mode = RobotMode.SEARCH
+        
         self.teleop = False
         self.state = RobotState.STOP
         self.ir_readings = []
