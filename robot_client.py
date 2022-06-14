@@ -298,7 +298,7 @@ def rule1(robot):
     perceivedCenter = 0
     bearings = robot["neighbours"]["bearing"]
     for bearing in bearings:
-        perceivedCenter += + bearing
+        perceivedCenter += bearing
         
     perceivedCenter = perceivedCenter / (len(bearings) -1)
     return (perceivedCenter - robot.orientation) /100
