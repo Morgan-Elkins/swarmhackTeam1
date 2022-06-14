@@ -306,7 +306,19 @@ def moveBoidsToNewPostion(robot):
     #left,right = q
     return left,right
     
-    
+def heading(robot, target_bearing):
+    gain = (abs(target_bearing)/180)*robot.MAX_SPEED
+    left = (target_bearing/180)*robot.MAX_SPEED
+    right = -(target_bearing/180)*robot.MAX_SPEED
+    return left, right
+
+def heading2(robot, target_bearing, distance):
+    gain_bearing = (abs(target_bearing)/180)
+    gain_distance = distance/0.3;
+    left = (gain_distance + gain_bearing)*robot.MAX_SPEED * 0.5
+    right = (gain_distance - gain_distance)*robot.MAX_SPEED *0.5
+    return left, right
+
 #Attractive force - boids go to percived center of mass 
 def rule1(robot,bearings):
     perceivedCenter = 0
