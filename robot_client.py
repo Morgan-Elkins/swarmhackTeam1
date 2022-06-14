@@ -99,6 +99,8 @@ class Robot:
         self.orientation = 0
         self.neighbours = {}
 
+        self.mode = RobotMode.SEARCH
+
         self.teleop = False
         self.state = RobotState.STOP
         self.ir_readings = []
@@ -275,6 +277,34 @@ async def get_data(robot):
     except Exception as e:
         print(f"{type(e).__name__}: {e}")
 
+class RobotMode(Enum):
+    SEARCH = 1
+    WAIT = 2
+    STOP = 3
+    HEADTOTARGET = 4
+
+def RobotUpdate(robot):
+    #Update the bot depending on the mode
+    #FSM
+    if robot.mode == RobotMode.SEARCH:
+        RobotSearch(robot)
+    elif robot.mode == RobotMode.HEADTOTARGET:
+        RobotHeadingToTarget(robot)
+    elif robot.mode == RobotMode.STOP:
+        Robot(robot)
+
+def RobotSearch(robot):
+    #Random search
+    print("searching")
+
+def RobotHeadingToTarget(robot):
+    #Head to target
+
+    print("heading to target")
+
+def RobotStop(robot):
+    #Stor the robot
+    print("stop")
 
 # Send motor and LED commands to robot
 # This function also performs the obstacle avoidance and teleop algorithm state machines
@@ -306,6 +336,9 @@ async def send_commands(robot):
             elif robot.state == RobotState.STOP:
                 left = right = 0
         else:
+
+            RobotUpdate(robot)
+
             # Autonomous mode
             if robot.state == RobotState.FORWARDS:
                 left = right = robot.MAX_SPEED
