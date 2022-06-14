@@ -106,7 +106,8 @@ class Robot:
         self.connection = None
 
         self.orientation = 0
-        self.neighbours = {}
+        self.neighbours = {}#
+        self.worth = -1
 
         self.teleop = False
         self.state = RobotState.STOP
@@ -304,6 +305,7 @@ def moveBoidsToNewPostion(robot):
             
 
     velocity = 0
+    distance = 1
     print(headID)
     if headID != -1:
         for hid,items in robot.neighbours.items():
@@ -311,6 +313,7 @@ def moveBoidsToNewPostion(robot):
             if int(headID) == int(hid):
                 print("WORKING")
                 velocity = -items["bearing"] +180
+                distance = items["range"]
 
     # for i in keys:
     #     if active_robots[i].telop:
@@ -325,8 +328,24 @@ def moveBoidsToNewPostion(robot):
     velocity = np.radians(velocity)
     q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
     left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
+    print("Distance: ",distance)
+    if distance < 0.20:
+        left = -left[0] * (setMax((distance + 0.05)/0.2)) * robot.MAX_SPEED
+        right = -right[0] * (setMax((distance + 0.05)/0.2)) * robot.MAX_SPEED
+    else:
+        left = -left[0] * robot.MAX_SPEED
+        right = -right[0] * robot.MAX_SPEED
+    
+    if headID == -1:
+        left,right = 0,0
     #left,right = q
     return left,right
+
+def setMax(x):
+    if x > 1:
+        return 1
+    else:
+        return x
     
 def heading(robot, target_bearing):
     gain = (abs(target_bearing)/180)*robot.MAX_SPEED
@@ -402,8 +421,6 @@ async def send_commands(robot):
             print("ID:",robot.id)
 
             left,right = moveBoidsToNewPostion(robot)
-            left = robot.MAX_SPEED * -left[0]
-            right = robot.MAX_SPEED * -right[0]
             print(left,right)
             #left,right = 0,0
         else:
@@ -550,7 +567,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(31, 36)
+    robot_ids = range(31, 35)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
