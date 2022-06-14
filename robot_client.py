@@ -60,11 +60,18 @@ class RobotState(Enum):
     LEFT = 3
     RIGHT = 4
     STOP = 5
+<<<<<<< Updated upstream
 
 class AgentMode(Enum):
     PARRENT = 1
     CHILD = 2
     EXAMPLE = 3
+=======
+class RobotMode(Enum):
+    TELEOP = 1
+    RANDOM_WALK = 2
+    FLOCKING = 3
+>>>>>>> Stashed changes
 
 class Robot:
 
@@ -78,7 +85,11 @@ class Robot:
         self.orientation = 0
         self.neighbours = {}
 
+<<<<<<< Updated upstream
         self.mode = AgentMode.CHILD
+=======
+        self.RobotMode = RobotMode.FLOCKING
+>>>>>>> Stashed changes
         self.teleop = False
         self.state = RobotState.STOP
         self.ir_readings = []
@@ -243,6 +254,116 @@ async def get_data(robot):
         print(f"{type(e).__name__}: {e}")
 
 
+<<<<<<< Updated upstream
+=======
+#Psudocode found at https://vergenet.net/~conrad/boids/pseudocode.html
+
+#Function to move each robot/boid to new location
+def moveBoidsToNewPostion(robot):
+    keys = robot.neighbours.keys()
+    neighbours = list(robot.neighbours.values())
+    bearings = []
+    distances = []
+    for i in range(len(neighbours)):
+        bearings.append(neighbours[i]["bearing"])
+        distances.append(neighbours[i]["range"])
+
+    print(active_robots.keys())
+    for id, robot in active_robots.items():
+        if robot.teleop:
+            headID = id
+    print(robot.id)
+    print(robot.neighbours)
+
+    # for i in keys:
+    #     if active_robots[i].telop:
+    #         print("yes")
+    velocity = 0
+    if neighbours != 0:
+        v1 = rule1(robot,bearings)
+        #v2 = rule2(robot,distances)
+        v3 = rule3(robot,distances)
+        velocity = robot.orientation #+ v1 +v3 
+    velocity = np.radians(velocity)
+    q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
+    left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
+    #left,right = q
+    return left,right
+    
+def heading(robot, target_bearing):
+    gain = (abs(target_bearing)/180)*robot.MAX_SPEED
+    left = (target_bearing/180)*robot.MAX_SPEED
+    right = -(target_bearing/180)*robot.MAX_SPEED
+    return left, right
+
+def heading2(robot, target_bearing, distance):
+    gain_bearing = (abs(target_bearing)/180)
+    gain_distance = distance/0.3;
+    left = (gain_distance + gain_bearing)*robot.MAX_SPEED * 0.5
+    right = (gain_distance - gain_distance)*robot.MAX_SPEED *0.5
+    return left, right
+
+#Attractive force - boids go to percived center of mass 
+def rule1(robot,bearings):
+    perceivedCenter = 0
+    for bearing in bearings:
+        perceivedCenter += bearing
+        
+    perceivedCenter = perceivedCenter / (len(bearings))
+    return (perceivedCenter) 
+
+#Push force - boids keep a small distance from each other
+def rule2(robot,dist):
+    c = 0
+    for bearing in dist:
+        if abs(robot.orientation - bearing) < 100:
+            c += -(robot.orientation - bearing)
+    return c
+
+#Match velocity of nearby boids
+def rule3(robot,bearings):
+    perceivedVelocity = 0
+    for bearing in bearings:
+        perceivedVelocity += bearing
+    perceivedVelocity = perceivedVelocity / (len(bearings) )
+    
+    return (perceivedVelocity - robot.orientation) / 8
+
+def flocking(robot):
+    keys = robot.neighbours.keys()
+    neighbours = list(robot.neighbours.values())
+    bearings = []
+    distances = []
+    for i in range(len(neighbours)):
+        bearings.append(neighbours[i]["bearing"])
+        distances.append(neighbours[i]["range"])
+
+    print(active_robots.keys())
+    for id, robot in active_robots.items():
+        if robot.teleop:
+            headID = id
+    print(robot.id)
+    print(robot.neighbours)
+
+    # for i in keys:
+    #     if active_robots[i].telop:
+    #         print("yes")
+    velocity = 0
+    if neighbours != 0:
+        v1 = rule1(robot,bearings)
+        #v2 = rule2(robot,distances)
+        v3 = rule3(robot,distances)
+        velocity = robot.orientation #+ v1 +v3 
+    velocity = np.radians(velocity)
+    q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
+    left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
+    #left,right = q
+    return left,right
+
+
+# Send motor and LED commands to robot
+# This function also performs the obstacle avoidance and teleop algorithm state machines
+>>>>>>> Stashed changes
 async def send_commands(robot):
     try:
         # Turn off LEDs and motors when killed
@@ -269,6 +390,14 @@ async def send_commands(robot):
                 right = -robot.MAX_SPEED * 0.8
             elif robot.state == RobotState.STOP:
                 left = right = 0
+<<<<<<< Updated upstream
+=======
+        elif robot.Mode == RobotMode.FLOCKING: # TODO replace with if all robots are connected
+            left,right = moveBoidsToNewPostion(robot)
+            left = robot.MAX_SPEED * -left[0]
+            right = robot.MAX_SPEED * -right[0]
+            #left,right = 0,0
+>>>>>>> Stashed changes
         else:
             if robot.mode == AgentMode.EXAMPLE:
                 # Autonomous mode
