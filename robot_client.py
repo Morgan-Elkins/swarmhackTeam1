@@ -125,7 +125,7 @@ class Robot:
         else:
             # Mona
             self.ir_threshold = 80
-
+    
 
 # Connect to websocket server of tracking server
 async def connect_to_server():
@@ -298,22 +298,37 @@ def moveBoidsToNewPostion(robot):
         bearings.append(neighbours[i]["bearing"])
         distances.append(neighbours[i]["range"])
 
-    headID = -1
+    leaderID = -1
     for rid, rrobot in active_robots.items():
         if rrobot.teleop:
-            headID = rid
-            
+            leaderID = rid
+
+    currentLeader = -1
+    for hid,items in robot.neighbours.items():
+        if int(hid) == int(leaderID):
+            currentLeader = leaderID
+            break
+        elif int(hid) > int(currentLeader):
+            currentLeader = hid
+        else:
+            currentLeader = currentLeader
+
 
     velocity = 0
     distance = 1
-    print(headID)
-    if headID != -1:
+    if currentLeader != -1:
+        print("Neighbours", robot.neighbours)
         for hid,items in robot.neighbours.items():
-            print(headID, hid)
-            if int(headID) == int(hid):
+            print(currentLeader, hid)
+            if int(currentLeader) == int(hid):
                 print("WORKING")
                 velocity = -items["bearing"] +180
                 distance = items["range"]
+    else:
+        print("RANDOM")
+    
+
+            
 
     # for i in keys:
     #     if active_robots[i].telop:
@@ -329,14 +344,17 @@ def moveBoidsToNewPostion(robot):
     q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
     left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
     print("Distance: ",distance)
-    if distance < 0.20:
-        left = -left[0] * (setMax((distance + 0.05)/0.2)) * robot.MAX_SPEED
-        right = -right[0] * (setMax((distance + 0.05)/0.2)) * robot.MAX_SPEED
+    if distance < 0.1:
+        left = 0
+        right = 0
+    elif distance < 0.20:
+        left = -left[0] * (((distance )/0.3)) * robot.MAX_SPEED * 0.8#(setMax((distance + 0.05)/0.2))
+        right = -right[0] * (((distance)/0.3)) * robot.MAX_SPEED * 0.8
     else:
-        left = -left[0] * robot.MAX_SPEED
-        right = -right[0] * robot.MAX_SPEED
+        left = -left[0] * robot.MAX_SPEED * 0.7
+        right = -right[0] * robot.MAX_SPEED * 0.7
     
-    if headID == -1:
+    if leaderID == -1:
         left,right = 0,0
     #left,right = q
     return left,right
@@ -567,7 +585,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(31, 35)
+    robot_ids = range(31, 36)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
