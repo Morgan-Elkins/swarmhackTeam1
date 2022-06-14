@@ -3,6 +3,8 @@
 from dis import dis
 from operator import ne
 from turtle import Vec2D, distance
+
+from requests import head
 from robots import robots, server_none, server_york, server_manchester, server_sheffield
 
 import asyncio
@@ -295,20 +297,20 @@ def moveBoidsToNewPostion(robot):
         bearings.append(neighbours[i]["bearing"])
         distances.append(neighbours[i]["range"])
 
-    # print(active_robots.keys())
-    # headID = -1
-    # for id, robot in active_robots.items():
-    #     if robot.teleop:
-    #         headID = id
+    headID = -1
+    for rid, rrobot in active_robots.items():
+        if rrobot.teleop:
+            headID = rid
             
 
-    # velocity = 1
-    # print(headID)
-    # if headID != -1:
-    #     for id, a,bearing,c in robot.neighbours:
-    #         if headID == id:
-    #             print("WORKING")
-    #             velocity = bearing
+    velocity = 0
+    print(headID)
+    if headID != -1:
+        for hid,items in robot.neighbours.items():
+            print(headID, hid)
+            if int(headID) == int(hid):
+                print("WORKING")
+                velocity = -items["bearing"] +180
 
     # for i in keys:
     #     if active_robots[i].telop:
@@ -319,7 +321,8 @@ def moveBoidsToNewPostion(robot):
     #     #v3 = rule3(robot,distances)
     #     #velocity = robot.orientation #+ v1 +v3 
     #     pass
-    velocity = np.radians(robot.orientation)
+    print(velocity)
+    velocity = np.radians(velocity)
     q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
     left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
     #left,right = q
