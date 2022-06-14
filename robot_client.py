@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-from turtle import Vec2D
+from dis import dis
+from operator import ne
+from turtle import Vec2D, distance
 from robots import robots, server_none, server_york, server_manchester, server_sheffield
 
 import asyncio
@@ -14,6 +16,7 @@ import time
 import random
 import inspect
 import math
+import numpy as np
 
 import colorama
 from colorama import Fore
@@ -284,41 +287,49 @@ async def get_data(robot):
 
 #Function to move each robot/boid to new location
 def moveBoidsToNewPostion(robot):
-    v1 = rule1(robot)
-    v2 = rule2(robot)
-    v3 = rule3(robot)
-    velocity = robot.orientation + v1 + v2 + v3
-    q = [-math.sin(velocity),math.cos(velocity)]
-    left,right = [[1,1],[-1,1]].dot(q)
+    
+    neighbours = list(robot.neighbours.values())
+    bearings = []
+    distances = []
+    for i in range(len(neighbours)):
+        bearings.append(neighbours[i]["bearing"])
+        distances.append(neighbours[i]["range"])
+    print(distances)
+    velocity = 0
+    if neighbours != 0:
+        v1 = rule1(robot,bearings)
+        v2 = rule2(robot,distances)
+        #v3 = rule3(robot,distances)
+        velocity = robot.orientation + v1 + v2 
+    q = np.array([-math.sin(velocity),math.cos(velocity)])
+    left,right = np.array([[1,1],[-1,1]]) @ q
+    #left,right = q
     return left,right
     
     
 #Attractive force - boids go to percived center of mass 
-def rule1(robot):
+def rule1(robot,bearings):
     perceivedCenter = 0
-    bearings = robot["neighbours"]["bearing"]
     for bearing in bearings:
         perceivedCenter += bearing
         
-    perceivedCenter = perceivedCenter / (len(bearings) -1)
+    perceivedCenter = perceivedCenter / (len(bearings))
     return (perceivedCenter - robot.orientation) /100
 
-#Pull force - boids keep a small distance from each other
-def rule2(robot):
+#Push force - boids keep a small distance from each other
+def rule2(robot,dist):
     c = 0
-    bearings = robot["neighbours"]["bearing"]
-    for bearing in bearings:
-        if abs(robot.orientation - bearing) < 100:
-            c += - (robot.orientation - bearing)
+    for bearing in dist:
+        if abs(robot.orientation - dist) < 100:
+            c += -(robot.orientation - dist)
     return c
 
 #Match velocity of nearby boids
-def rule3(robot):
+def rule3(robot,bearings):
     perceivedVelocity = 0
-    bearings = robot["neighbours"]["bearing"]
     for bearing in bearings:
         perceivedVelocity += bearing
-    perceivedVelocity = perceivedVelocity / (len(bearings) -1)
+    perceivedVelocity = perceivedVelocity / (len(bearings) )
     
     return (perceivedVelocity - robot.orientation) / 8
 
@@ -358,6 +369,7 @@ async def send_commands(robot):
             
             left = robot.MAX_SPEED * left
             right = robot.MAX_SPEED * right
+            print(left,right,"idaofubhei")
         else:
             # Autonomous mode
             if robot.state == RobotState.FORWARDS:
@@ -502,7 +514,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(31, 35)
+    robot_ids = range(31, 33)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
