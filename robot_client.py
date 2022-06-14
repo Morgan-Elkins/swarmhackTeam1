@@ -18,6 +18,8 @@ import math
 import colorama
 from colorama import Fore
 
+from vector2d import Vector2D
+
 colorama.init(autoreset=True)
 
 
@@ -286,7 +288,9 @@ def moveBoidsToNewPostion(robot):
     v2 = rule2(robot)
     v3 = rule3(robot)
     velocity = robot.orientation + v1 + v2 + v3
-    return velocity
+    q = [-math.sin(velocity),math.cos(velocity)]
+    left,right = [[1,1],[-1,1]].dot(q)
+    return left,right
     
     
 #Attractive force - boids go to percived center of mass 
@@ -350,9 +354,10 @@ async def send_commands(robot):
             elif robot.state == RobotState.STOP:
                 left = right = 0
         elif True: # TODO replace with if all robots are connected
-            vel = moveBoidsToNewPostion(robot)
-            left = robot.MAX_SPEED * math.sin(vel)
-            right = robot.MAX_SPEED * math.cos(vel)
+            left,right = moveBoidsToNewPostion(robot)
+            
+            left = robot.MAX_SPEED * left
+            right = robot.MAX_SPEED * right
         else:
             # Autonomous mode
             if robot.state == RobotState.FORWARDS:
