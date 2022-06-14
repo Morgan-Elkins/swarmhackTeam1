@@ -287,7 +287,7 @@ async def get_data(robot):
 
 #Function to move each robot/boid to new location
 def moveBoidsToNewPostion(robot):
-    keys = robot.neighbours.keys()
+    print("ID: ", robot.id)
     neighbours = list(robot.neighbours.values())
     bearings = []
     distances = []
@@ -295,23 +295,31 @@ def moveBoidsToNewPostion(robot):
         bearings.append(neighbours[i]["bearing"])
         distances.append(neighbours[i]["range"])
 
-    print(active_robots.keys())
-    for id, robot in active_robots.items():
-        if robot.teleop:
-            headID = id
-    print(robot.id)
-    print(robot.neighbours)
+    # print(active_robots.keys())
+    # headID = -1
+    # for id, robot in active_robots.items():
+    #     if robot.teleop:
+    #         headID = id
+            
+
+    # velocity = 1
+    # print(headID)
+    # if headID != -1:
+    #     for id, a,bearing,c in robot.neighbours:
+    #         if headID == id:
+    #             print("WORKING")
+    #             velocity = bearing
 
     # for i in keys:
     #     if active_robots[i].telop:
     #         print("yes")
-    velocity = 0
-    if neighbours != 0:
-        v1 = rule1(robot,bearings)
-        #v2 = rule2(robot,distances)
-        v3 = rule3(robot,distances)
-        velocity = robot.orientation #+ v1 +v3 
-    velocity = np.radians(velocity)
+    # if neighbours != 0:
+    #     #v1 = rule1(robot,bearings)
+    #     #v2 = rule2(robot,distances)
+    #     #v3 = rule3(robot,distances)
+    #     #velocity = robot.orientation #+ v1 +v3 
+    #     pass
+    velocity = np.radians(robot.orientation)
     q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
     left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
     #left,right = q
@@ -325,7 +333,7 @@ def heading(robot, target_bearing):
 
 def heading2(robot, target_bearing, distance):
     gain_bearing = (abs(target_bearing)/180)
-    gain_distance = distance/0.3;
+    gain_distance = distance/0.3
     left = (gain_distance + gain_bearing)*robot.MAX_SPEED * 0.5
     right = (gain_distance - gain_distance)*robot.MAX_SPEED *0.5
     return left, right
@@ -388,9 +396,12 @@ async def send_commands(robot):
             elif robot.state == RobotState.STOP:
                 left = right = 0
         elif True: # TODO replace with if all robots are connected
+            print("ID:",robot.id)
+
             left,right = moveBoidsToNewPostion(robot)
             left = robot.MAX_SPEED * -left[0]
             right = robot.MAX_SPEED * -right[0]
+            print(left,right)
             #left,right = 0,0
         else:
             # Autonomous mode
@@ -536,7 +547,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(33, 36)
+    robot_ids = range(31, 36)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
