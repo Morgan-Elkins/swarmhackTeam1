@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from turtle import right
 from robots import robots, server_none, server_york, server_manchester, server_sheffield
 
 import asyncio
@@ -287,15 +288,46 @@ def RobotUpdate(robot):
     #Update the bot depending on the mode
     #FSM
     if robot.mode == RobotMode.SEARCH:
-        RobotSearch(robot)
+        left, right = RobotSearch(robot)
+
     elif robot.mode == RobotMode.HEADTOTARGET:
-        RobotHeadingToTarget(robot)
+        left, right = RobotHeadingToTarget(robot)
+    
     elif robot.mode == RobotMode.STOP:
-        Robot(robot)
+        left, right = RobotStop(robot)
+    
+    return left, right
 
 def RobotSearch(robot):
     #Random search
-    print("searching")
+    
+    if robot.state == RobotState.FORWARDS:
+        left = right = robot.MAX_SPEED
+        if (time.time() - robot.turn_time > 0.5) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
+            robot.turn_time = time.time()
+            robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
+    elif robot.state == RobotState.BACKWARDS:
+        left = right = -robot.MAX_SPEED
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.LEFT:
+        left = -robot.MAX_SPEED
+        right = robot.MAX_SPEED
+        if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.RIGHT:
+        left = robot.MAX_SPEED
+        right = -robot.MAX_SPEED
+        if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.STOP:
+        left = right = 0
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+
+    return left, right
 
 def RobotHeadingToTarget(robot):
     #Head to target
@@ -303,8 +335,14 @@ def RobotHeadingToTarget(robot):
     print("heading to target")
 
 def RobotStop(robot):
-    #Stor the robot
+    #Stop the robot
     print("stop")
+
+
+
+    left = right = 0
+    
+    return left, right
 
 # Send motor and LED commands to robot
 # This function also performs the obstacle avoidance and teleop algorithm state machines
@@ -337,34 +375,7 @@ async def send_commands(robot):
                 left = right = 0
         else:
 
-            RobotUpdate(robot)
-
-            # Autonomous mode
-            if robot.state == RobotState.FORWARDS:
-                left = right = robot.MAX_SPEED
-                if (time.time() - robot.turn_time > 0.5) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
-                    robot.turn_time = time.time()
-                    robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
-            elif robot.state == RobotState.BACKWARDS:
-                left = right = -robot.MAX_SPEED
-                robot.turn_time = time.time()
-                robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.LEFT:
-                left = -robot.MAX_SPEED
-                right = robot.MAX_SPEED
-                if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
-                    robot.turn_time = time.time()
-                    robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.RIGHT:
-                left = robot.MAX_SPEED
-                right = -robot.MAX_SPEED
-                if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
-                    robot.turn_time = time.time()
-                    robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.STOP:
-                left = right = 0
-                robot.turn_time = time.time()
-                robot.state = RobotState.FORWARDS
+            left, right = RobotUpdate(robot)
 
         message["set_motor_speeds"] = {}
         message["set_motor_speeds"]["left"] = left
