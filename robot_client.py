@@ -64,7 +64,7 @@ class RobotState(Enum):
 
 class RobotMode(Enum):
     SEARCH = 1
-    WAIT = 1
+    WAIT = 2
     POSITION = 3
     HEADTOTARGET = 4
 
