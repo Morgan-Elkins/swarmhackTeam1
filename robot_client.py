@@ -308,11 +308,6 @@ def moveBoidsToNewPostion(robot):
 
     currentLeader = -1
     leaderFound = True
-    for hid,items in robot.neighbours.items():
-        if int(hid) == int(leaderID):
-            currentLeader = leaderID
-            leaderFound = False
-
 
     if leaderFound:
         print()
@@ -322,11 +317,25 @@ def moveBoidsToNewPostion(robot):
             else:
                 currentLeader = currentLeader
 
+    inTask = False
+    taskBearing = 0
+    taskDistance = 0
+    for taskID,items in robot.tasks.items():
+        if (len(taskID) != 0):
+            inTask = True
+            taskBearing = items["bearing"]
+            taskDistance = items["range"]
+    for hid,items in robot.neighbours.items():
+        if int(hid) == int(leaderID):
+            currentLeader = leaderID
+            leaderFound = False
+
+
     velocity = 0
     distance = 1
     if currentLeader != -1:
         isRandom = False
-        print("Neighbours", robot.neighbours)
+        #print("Neighbours", robot.neighbours)
         for hid,items in robot.neighbours.items():
             print(currentLeader, hid)
             if int(currentLeader) == int(hid):
@@ -345,15 +354,21 @@ def moveBoidsToNewPostion(robot):
         left = 0
         right = 0
     elif distance < 0.15:
-        left = -left[0] * (((distance )/0.3)) * robot.MAX_SPEED * 0.8#(setMax((distance + 0.05)/0.2))
+        left = -left[0] * (((distance)/0.3)) * robot.MAX_SPEED * 0.8 #(setMax((distance + 0.05)/0.2))
         right = -right[0] * (((distance)/0.3)) * robot.MAX_SPEED * 0.8
     else:
         left = -left[0] * robot.MAX_SPEED * 0.9
         right = -right[0] * robot.MAX_SPEED * 0.9
     
-    # if leaderID == -1:
-    #     print("here")
-    #     left,right = 0,0
+    if inTask:
+        print("IN TASK")
+        if taskDistance < 0.1:
+            return 0,0
+        print(taskDistance)
+        velocity = np.radians(-taskBearing + 180)
+        q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
+        left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
+        return -left[0] * robot.MAX_SPEED ,-right[0] * robot.MAX_SPEED 
 
     if isRandom:
         print("RandomID: ", robot.id)
@@ -594,7 +609,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(33, 36)
+    robot_ids = range(31, 36)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
