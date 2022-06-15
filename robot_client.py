@@ -291,6 +291,7 @@ async def get_data(robot):
 #Function to move each robot/boid to new location
 def moveBoidsToNewPostion(robot):
     print("ID: ", robot.id)
+    isRandom = False
     neighbours = list(robot.neighbours.values())
     bearings = []
     distances = []
@@ -302,21 +303,29 @@ def moveBoidsToNewPostion(robot):
     for rid, rrobot in active_robots.items():
         if rrobot.teleop:
             leaderID = rid
+        else:
+            leaderID = -1
 
     currentLeader = -1
+    leaderFound = True
     for hid,items in robot.neighbours.items():
         if int(hid) == int(leaderID):
             currentLeader = leaderID
-            break
-        elif int(hid) > int(currentLeader):
-            currentLeader = hid
-        else:
-            currentLeader = currentLeader
+            leaderFound = False
 
+
+    if leaderFound:
+        print()
+        for hid,items in robot.neighbours.items():
+            if int(hid) > int(currentLeader) and (int(robot.id) < int(hid)):
+                currentLeader = hid
+            else:
+                currentLeader = currentLeader
 
     velocity = 0
     distance = 1
     if currentLeader != -1:
+        isRandom = False
         print("Neighbours", robot.neighbours)
         for hid,items in robot.neighbours.items():
             print(currentLeader, hid)
@@ -326,37 +335,32 @@ def moveBoidsToNewPostion(robot):
                 distance = items["range"]
     else:
         print("RANDOM")
-    
-
-            
-
-    # for i in keys:
-    #     if active_robots[i].telop:
-    #         print("yes")
-    # if neighbours != 0:
-    #     #v1 = rule1(robot,bearings)
-    #     #v2 = rule2(robot,distances)
-    #     #v3 = rule3(robot,distances)
-    #     #velocity = robot.orientation #+ v1 +v3 
-    #     pass
-    print(velocity)
+        isRandom = True
+    print("velocity: ",velocity)
     velocity = np.radians(velocity)
     q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
     left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
     print("Distance: ",distance)
-    if distance < 0.1:
+    if distance <= 0.12:
         left = 0
         right = 0
-    elif distance < 0.20:
+    elif distance < 0.15:
         left = -left[0] * (((distance )/0.3)) * robot.MAX_SPEED * 0.8#(setMax((distance + 0.05)/0.2))
         right = -right[0] * (((distance)/0.3)) * robot.MAX_SPEED * 0.8
     else:
-        left = -left[0] * robot.MAX_SPEED * 0.7
-        right = -right[0] * robot.MAX_SPEED * 0.7
+        left = -left[0] * robot.MAX_SPEED * 0.9
+        right = -right[0] * robot.MAX_SPEED * 0.9
     
-    if leaderID == -1:
-        left,right = 0,0
-    #left,right = q
+    # if leaderID == -1:
+    #     print("here")
+    #     left,right = 0,0
+
+    if isRandom:
+        print("RandomID: ", robot.id)
+        left,right = randomMovement(robot)
+
+
+
     return left,right
 
 def setMax(x):
@@ -374,8 +378,8 @@ def heading(robot, target_bearing):
 def heading2(robot, target_bearing, distance):
     gain_bearing = (abs(target_bearing)/180)
     gain_distance = distance/0.3
-    left = (gain_distance + gain_bearing)*robot.MAX_SPEED * 0.5
-    right = (gain_distance - gain_distance)*robot.MAX_SPEED *0.5
+    left = (gain_distance + gain_bearing) * robot.MAX_SPEED * 0.5
+    right = (gain_distance - gain_distance) * robot.MAX_SPEED * 0.5
     return left, right
 
 #Attractive force - boids go to percived center of mass 
@@ -404,6 +408,36 @@ def rule3(robot,bearings):
     
     return (perceivedVelocity - robot.orientation) / 8
 
+
+def randomMovement(robot):
+        # Autonomous mode
+    if robot.state == RobotState.FORWARDS:
+        left = right = robot.MAX_SPEED
+        if (time.time() - robot.turn_time > 0.5) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
+            robot.turn_time = time.time()
+            robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
+    elif robot.state == RobotState.BACKWARDS:
+        left = right = -robot.MAX_SPEED
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.LEFT:
+        left = -robot.MAX_SPEED
+        right = robot.MAX_SPEED
+        if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.RIGHT:
+        left = robot.MAX_SPEED
+        right = -robot.MAX_SPEED
+        if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.STOP:
+        left = right = 0
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+    
+    return left,right
 
 
 # Send motor and LED commands to robot
@@ -442,32 +476,7 @@ async def send_commands(robot):
             print(left,right)
             #left,right = 0,0
         else:
-            # Autonomous mode
-            if robot.state == RobotState.FORWARDS:
-                left = right = robot.MAX_SPEED
-                if (time.time() - robot.turn_time > 0.5) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
-                    robot.turn_time = time.time()
-                    robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
-            elif robot.state == RobotState.BACKWARDS:
-                left = right = -robot.MAX_SPEED
-                robot.turn_time = time.time()
-                robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.LEFT:
-                left = -robot.MAX_SPEED
-                right = robot.MAX_SPEED
-                if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
-                    robot.turn_time = time.time()
-                    robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.RIGHT:
-                left = robot.MAX_SPEED
-                right = -robot.MAX_SPEED
-                if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
-                    robot.turn_time = time.time()
-                    robot.state = RobotState.FORWARDS
-            elif robot.state == RobotState.STOP:
-                left = right = 0
-                robot.turn_time = time.time()
-                robot.state = RobotState.FORWARDS
+            pass
 
         message["set_motor_speeds"] = {}
         message["set_motor_speeds"]["left"] = left
@@ -585,7 +594,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(31, 36)
+    robot_ids = range(33, 36)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
