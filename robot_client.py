@@ -11,7 +11,7 @@ import sys
 from enum import Enum
 import time
 import random
-
+import numpy as np
 import colorama
 from colorama import Fore
 
@@ -60,19 +60,16 @@ class RobotState(Enum):
     LEFT = 3
     RIGHT = 4
     STOP = 5
-<<<<<<< Updated upstream
 
 class AgentMode(Enum):
     PARRENT = 1
     CHILD = 2
     EXAMPLE = 3
-=======
-class RobotMode(Enum):
-    TELEOP = 1
-    RANDOM_WALK = 2
-    FLOCKING = 3
->>>>>>> Stashed changes
-
+    TELEOP = 4
+    RANDOM_WALK = 5
+    FLOCKING = 6
+    WAITING = 7
+    
 class Robot:
 
     BAT_LOW_VOLTAGE = 3.6
@@ -85,11 +82,7 @@ class Robot:
         self.orientation = 0
         self.neighbours = {}
 
-<<<<<<< Updated upstream
-        self.mode = AgentMode.CHILD
-=======
-        self.RobotMode = RobotMode.FLOCKING
->>>>>>> Stashed changes
+        self.mode = AgentMode.WAITING #RANDOM_WALK
         self.teleop = False
         self.state = RobotState.STOP
         self.ir_readings = []
@@ -254,10 +247,7 @@ async def get_data(robot):
         print(f"{type(e).__name__}: {e}")
 
 
-<<<<<<< Updated upstream
-=======
 #Psudocode found at https://vergenet.net/~conrad/boids/pseudocode.html
-
 #Function to move each robot/boid to new location
 def moveBoidsToNewPostion(robot):
     keys = robot.neighbours.keys()
@@ -342,6 +332,7 @@ def flocking(robot):
     for id, robot in active_robots.items():
         if robot.teleop:
             headID = id
+            
     print(robot.id)
     print(robot.neighbours)
 
@@ -363,7 +354,6 @@ def flocking(robot):
 
 # Send motor and LED commands to robot
 # This function also performs the obstacle avoidance and teleop algorithm state machines
->>>>>>> Stashed changes
 async def send_commands(robot):
     try:
         # Turn off LEDs and motors when killed
@@ -390,16 +380,59 @@ async def send_commands(robot):
                 right = -robot.MAX_SPEED * 0.8
             elif robot.state == RobotState.STOP:
                 left = right = 0
-<<<<<<< Updated upstream
-=======
-        elif robot.Mode == RobotMode.FLOCKING: # TODO replace with if all robots are connected
-            left,right = moveBoidsToNewPostion(robot)
-            left = robot.MAX_SPEED * -left[0]
-            right = robot.MAX_SPEED * -right[0]
-            #left,right = 0,0
->>>>>>> Stashed changes
+                
+        # elif robot.mode == AgentMode.FLOCKING: # TODO replace with if all robots are connected
+        #     left,right = moveBoidsToNewPostion(robot)
+        #     left = robot.MAX_SPEED * -left[0]
+        #     right = robot.MAX_SPEED * -right[0]
         else:
-            if robot.mode == AgentMode.EXAMPLE:
+            print(robot.neighbours.keys())
+            neighbours = list(robot.neighbours.values())
+            nb_bearings = []
+            nb_distances = []
+            for i in range(len(neighbours)):
+                nb_bearings.append(neighbours[i]["bearing"])
+                nb_distances.append(neighbours[i]["range"])    
+            # tasks = list(robot.tasks.id)
+            # tasks_bearing = []
+            # tasks_distance = []
+            # tasks_workers = []
+            # for i in range(len(tasks)):
+            #     tasks_bearing.append(tasks[i]["bearing"])
+            #     tasks_distance.append(tasks[i]["range"])  
+            #     tasks_workers.append(tasks[i]["workers"]) 
+              
+            # for neighbour_id, neighbour in robot.neighbours.items():
+                
+            #     print (neighbour_id)
+                # reply[id]["neighbours"][neighbour_id] = {}
+                # reply[id]["neighbours"][neighbour_id]["range"] = neighbour.range
+                # reply[id]["neighbours"][neighbour_id]["bearing"] = neighbour.bearing
+                # reply[id]["neighbours"][neighbour_id]["orientation"] = neighbour.orientation
+            # if len(robot.tasks.items())>0:
+            #     print(robot.tasks.items())
+            # currentrobotid = robot.id
+            # print(active_robots[currentrobotid].tasks)
+            # print(robot.tasks.id)    
+            for task_id, items in robot.tasks.items():
+                print(len(robot.tasks.items()))
+                print (task_id)
+                if (len(task_id)>0):
+                    
+                # reply[id]["tasks"][task_id] = {}
+                # reply[id]["tasks"][task_id]["range"] = task.range
+                # reply[id]["tasks"][task_id]["bearing"] = task.bearing
+                # reply[id]["tasks"][task_id]["workers"] = task.workers
+            
+            if robot.mode == AgentMode.WAITING: # TODO replace with if all robots are connected
+                left = 0
+                right = 0    
+            elif robot.mode == AgentMode.FLOCKING: # TODO replace with if all robots are connected
+                left1,right1 = flocking(robot)
+                left = robot.MAX_SPEED * left1
+                right = robot.MAX_SPEED * right1    
+            
+            elif robot.mode == AgentMode.RANDOM_WALK:
                 # Autonomous mode
                 if robot.state == RobotState.FORWARDS:
                     left = right = robot.MAX_SPEED
@@ -426,35 +459,7 @@ async def send_commands(robot):
                     left = right = 0
                     robot.turn_time = time.time()
                     robot.state = RobotState.FORWARDS
-                    
-            elif AgentMode.CHILD:
-                
-                if robot.state == RobotState.FORWARDS:
-                    left = right = robot.MAX_SPEED
-                    if (time.time() - robot.turn_time > 0.5) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
-                        robot.turn_time = time.time()
-                        robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
-                elif robot.state == RobotState.BACKWARDS:
-                    left = right = -robot.MAX_SPEED
-                    robot.turn_time = time.time()
-                    robot.state = RobotState.FORWARDS
-                elif robot.state == RobotState.LEFT:
-                    left = -robot.MAX_SPEED
-                    right = robot.MAX_SPEED
-                    if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
-                        robot.turn_time = time.time()
-                        robot.state = RobotState.FORWARDS
-                elif robot.state == RobotState.RIGHT:
-                    left = robot.MAX_SPEED
-                    right = -robot.MAX_SPEED
-                    if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
-                        robot.turn_time = time.time()
-                        robot.state = RobotState.FORWARDS
-                elif robot.state == RobotState.STOP:
-                    left = right = 0
-                    robot.turn_time = time.time()
-                    robot.state = RobotState.FORWARDS
-                    
+                                   
         message["set_motor_speeds"] = {}
         message["set_motor_speeds"]["left"] = left
         message["set_motor_speeds"]["right"] = right
@@ -573,7 +578,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Specify robots to work with
-    robot_ids = range(31, 33)
+    robot_ids = range(34, 36)
     # robot_ids = [1,31]
 
     for robot_id in robot_ids:
