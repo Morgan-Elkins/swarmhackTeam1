@@ -290,6 +290,7 @@ async def get_data(robot):
 
 #Function to move each robot/boid to new location
 def moveBoidsToNewPostion(robot):
+    print()
     print("ID: ", robot.id)
     isRandom = False
     neighbours = list(robot.neighbours.values())
@@ -299,18 +300,21 @@ def moveBoidsToNewPostion(robot):
         bearings.append(neighbours[i]["bearing"])
         distances.append(neighbours[i]["range"])
 
+    currentLeader = -1
+    leaderFound = True
     leaderID = -1
     for rid, rrobot in active_robots.items():
         if rrobot.teleop:
             leaderID = rid
         else:
             leaderID = -1
-
-    currentLeader = -1
-    leaderFound = True
+        if (rrobot.id != robot.id):
+            if (len(rrobot.tasks.items()) > 0):
+                
+                currentLeader = rrobot.id
+                print("FOUND neighour: ", rrobot.id)
 
     if leaderFound:
-        print()
         for hid,items in robot.neighbours.items():
             if int(hid) > int(currentLeader) and (int(robot.id) < int(hid)):
                 currentLeader = hid
@@ -362,7 +366,7 @@ def moveBoidsToNewPostion(robot):
         left = -left[0] * robot.MAX_SPEED * 0.9
         right = -right[0] * robot.MAX_SPEED * 0.9
     
-    if inTask:
+    if inTask and (leaderID > 0):
         print("IN TASK")
         if taskDistance < 0.1:
             return 0,0,"green"
@@ -374,7 +378,7 @@ def moveBoidsToNewPostion(robot):
         left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
         return -left[0] * robot.MAX_SPEED ,-right[0] * robot.MAX_SPEED ,"green"
 
-    if isRandom:
+    if isRandom and (leaderID > 0):
         print("RandomID: ", robot.id, "in task:",inTask)
         left,right = randomMovement(robot)
 
@@ -615,7 +619,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(34, 36)
+    robot_ids = range(31, 36)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
