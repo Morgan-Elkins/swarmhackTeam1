@@ -345,11 +345,13 @@ def moveBoidsToNewPostion(robot):
     else:
         print("RANDOM")
         isRandom = True
+
     print("velocity: ",velocity)
     velocity = np.radians(velocity)
     q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
     left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
     print("Distance: ",distance)
+
     if distance <= 0.12:
         left = 0
         right = 0
@@ -363,20 +365,22 @@ def moveBoidsToNewPostion(robot):
     if inTask:
         print("IN TASK")
         if taskDistance < 0.1:
-            return 0,0
-        print(taskDistance)
+            return 0,0,"green"
+        print("Task distance: ",taskDistance)
+        adjustment = rule2(robot,bearings)
+        print("Adjustment: ", adjustment)
         velocity = np.radians(-taskBearing + 180)
         q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
         left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
-        return -left[0] * robot.MAX_SPEED ,-right[0] * robot.MAX_SPEED 
+        return -left[0] * robot.MAX_SPEED ,-right[0] * robot.MAX_SPEED ,"green"
 
     if isRandom:
-        print("RandomID: ", robot.id)
+        print("RandomID: ", robot.id, "in task:",inTask)
         left,right = randomMovement(robot)
 
 
 
-    return left,right
+    return left,right,"blue"
 
 def setMax(x):
     if x > 1:
@@ -407,12 +411,13 @@ def rule1(robot,bearings):
     return (perceivedCenter) 
 
 #Push force - boids keep a small distance from each other
-def rule2(robot,dist):
+def rule2(robot,bearings):
     c = 0
-    for bearing in dist:
-        if abs(robot.orientation - bearing) < 100:
-            c += -(robot.orientation - bearing)
-    return c
+    if len(bearings) == 0:
+        return 0
+    for bearing in bearings:
+        c += (robot.orientation - bearing)
+    return (-c) / len(bearings)
 
 #Match velocity of nearby boids
 def rule3(robot,bearings):
@@ -487,7 +492,8 @@ async def send_commands(robot):
         elif True: # TODO replace with if all robots are connected
             print("ID:",robot.id)
 
-            left,right = moveBoidsToNewPostion(robot)
+            left,right,colour = moveBoidsToNewPostion(robot)
+            message["set_leds_colour"] = colour
             print(left,right)
             #left,right = 0,0
         else:
@@ -498,10 +504,10 @@ async def send_commands(robot):
         message["set_motor_speeds"]["right"] = right
 
         # Set RGB LEDs based on battery voltage
-        if robot.battery_voltage < robot.BAT_LOW_VOLTAGE:
-            message["set_leds_colour"] = "red"
-        else:
-            message["set_leds_colour"] = "green"
+        # if robot.battery_voltage < robot.BAT_LOW_VOLTAGE:
+        #     message["set_leds_colour"] = "red"
+        # else:
+        #     message["set_leds_colour"] = "green"
 
         # Send command message
         await robot.connection.send(json.dumps(message))
@@ -609,7 +615,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(31, 36)
+    robot_ids = range(34, 36)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
