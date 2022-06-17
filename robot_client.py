@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 
+from dis import dis
+from operator import ne
+from turtle import Vec2D, distance
+
+from requests import head
 from turtle import right
+
 from robots import robots, server_none, server_york, server_manchester, server_sheffield
 
 import asyncio
@@ -13,9 +19,13 @@ from enum import Enum
 import time
 import random
 import inspect
+import math
+import numpy as np
 
 import colorama
 from colorama import Fore
+
+from vector2d import Vector2D
 
 colorama.init(autoreset=True)
 
@@ -98,7 +108,8 @@ class Robot:
         self.connection = None
 
         self.orientation = 0
-        self.neighbours = {}
+        self.neighbours = {}#
+        self.worth = -1
 
         self.mode = RobotMode.SEARCH
 
@@ -118,7 +129,7 @@ class Robot:
         else:
             # Mona
             self.ir_threshold = 80
-
+    
 
 # Connect to websocket server of tracking server
 async def connect_to_server():
@@ -344,6 +355,184 @@ def RobotStop(robot):
     
     return left, right
 
+#Psudocode found at https://vergenet.net/~conrad/boids/pseudocode.html
+
+#Function to move each robot/boid to new location
+def moveBoidsToNewPostion(robot):
+    print()
+    print("ID: ", robot.id)
+    isRandom = False
+    neighbours = list(robot.neighbours.values())
+    bearings = []
+    distances = []
+    for i in range(len(neighbours)):
+        bearings.append(neighbours[i]["bearing"])
+        distances.append(neighbours[i]["range"])
+
+    currentLeader = -1
+    leaderFound = True
+    leaderID = -1
+    for rid, rrobot in active_robots.items():
+        if rrobot.teleop:
+            leaderID = rid
+        else:
+            leaderID = -1
+        if (rrobot.id != robot.id):
+            if (len(rrobot.tasks.items()) > 0):
+                
+                currentLeader = rrobot.id
+                print("FOUND neighour: ", rrobot.id)
+
+    if leaderFound:
+        for hid,items in robot.neighbours.items():
+            if int(hid) > int(currentLeader) and (int(robot.id) < int(hid)):
+                currentLeader = hid
+            else:
+                currentLeader = currentLeader
+
+    inTask = False
+    taskBearing = 0
+    taskDistance = 0
+    for taskID,items in robot.tasks.items():
+        if (len(taskID) != 0):
+            inTask = True
+            taskBearing = items["bearing"]
+            taskDistance = items["range"]
+    for hid,items in robot.neighbours.items():
+        if int(hid) == int(leaderID):
+            currentLeader = leaderID
+            leaderFound = False
+
+
+    velocity = 0
+    distance = 1
+    if currentLeader != -1:
+        isRandom = False
+        #print("Neighbours", robot.neighbours)
+        for hid,items in robot.neighbours.items():
+            print(currentLeader, hid)
+            if int(currentLeader) == int(hid):
+                print("WORKING")
+                velocity = -items["bearing"] +180
+                distance = items["range"]
+    else:
+        print("RANDOM")
+        isRandom = True
+
+    print("velocity: ",velocity)
+    velocity = np.radians(velocity)
+    q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
+    left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
+    print("Distance: ",distance)
+
+    if distance <= 0.12:
+        left = 0
+        right = 0
+    elif distance < 0.15:
+        left = -left[0] * (((distance)/0.3)) * robot.MAX_SPEED * 0.8 #(setMax((distance + 0.05)/0.2))
+        right = -right[0] * (((distance)/0.3)) * robot.MAX_SPEED * 0.8
+    else:
+        left = -left[0] * robot.MAX_SPEED * 0.9
+        right = -right[0] * robot.MAX_SPEED * 0.9
+    
+    if inTask and (leaderID > 0):
+        print("IN TASK")
+        if taskDistance < 0.1:
+            return 0,0,"green"
+        print("Task distance: ",taskDistance)
+        adjustment = rule2(robot,bearings)
+        print("Adjustment: ", adjustment)
+        velocity = np.radians(-taskBearing + 180)
+        q = np.array([[-math.sin(velocity)],[math.cos(velocity)]])
+        left,right = np.matmul(np.array([[1,1],[-1,1]]),q)
+        return -left[0] * robot.MAX_SPEED ,-right[0] * robot.MAX_SPEED ,"green"
+
+    if isRandom and (leaderID > 0):
+        print("RandomID: ", robot.id, "in task:",inTask)
+        left,right = randomMovement(robot)
+
+
+
+    return left,right,"blue"
+
+def setMax(x):
+    if x > 1:
+        return 1
+    else:
+        return x
+    
+def heading(robot, target_bearing):
+    gain = (abs(target_bearing)/180)*robot.MAX_SPEED
+    left = (target_bearing/180)*robot.MAX_SPEED
+    right = -(target_bearing/180)*robot.MAX_SPEED
+    return left, right
+
+def heading2(robot, target_bearing, distance):
+    gain_bearing = (abs(target_bearing)/180)
+    gain_distance = distance/0.3
+    left = (gain_distance + gain_bearing) * robot.MAX_SPEED * 0.5
+    right = (gain_distance - gain_distance) * robot.MAX_SPEED * 0.5
+    return left, right
+
+#Attractive force - boids go to percived center of mass 
+def rule1(robot,bearings):
+    perceivedCenter = 0
+    for bearing in bearings:
+        perceivedCenter += bearing
+        
+    perceivedCenter = perceivedCenter / (len(bearings))
+    return (perceivedCenter) 
+
+#Push force - boids keep a small distance from each other
+def rule2(robot,bearings):
+    c = 0
+    if len(bearings) == 0:
+        return 0
+    for bearing in bearings:
+        c += (robot.orientation - bearing)
+    return (-c) / len(bearings)
+
+#Match velocity of nearby boids
+def rule3(robot,bearings):
+    perceivedVelocity = 0
+    for bearing in bearings:
+        perceivedVelocity += bearing
+    perceivedVelocity = perceivedVelocity / (len(bearings) )
+    
+    return (perceivedVelocity - robot.orientation) / 8
+
+
+def randomMovement(robot):
+        # Autonomous mode
+    if robot.state == RobotState.FORWARDS:
+        left = right = robot.MAX_SPEED
+        if (time.time() - robot.turn_time > 0.5) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
+            robot.turn_time = time.time()
+            robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
+    elif robot.state == RobotState.BACKWARDS:
+        left = right = -robot.MAX_SPEED
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.LEFT:
+        left = -robot.MAX_SPEED
+        right = robot.MAX_SPEED
+        if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.RIGHT:
+        left = robot.MAX_SPEED
+        right = -robot.MAX_SPEED
+        if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.STOP:
+        left = right = 0
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+    
+    return left,right
+
+
 # Send motor and LED commands to robot
 # This function also performs the obstacle avoidance and teleop algorithm state machines
 async def send_commands(robot):
@@ -373,19 +562,27 @@ async def send_commands(robot):
                 right = -robot.MAX_SPEED * 0.8
             elif robot.state == RobotState.STOP:
                 left = right = 0
-        else:
+        elif True: # TODO replace with if all robots are connected
+            print("ID:",robot.id)
 
+            left,right,colour = moveBoidsToNewPostion(robot)
+            message["set_leds_colour"] = colour
+            print(left,right)
+            #left,right = 0,0
+        else:
+          
             left, right = RobotUpdate(robot)
+
 
         message["set_motor_speeds"] = {}
         message["set_motor_speeds"]["left"] = left
         message["set_motor_speeds"]["right"] = right
 
         # Set RGB LEDs based on battery voltage
-        if robot.battery_voltage < robot.BAT_LOW_VOLTAGE:
-            message["set_leds_colour"] = "red"
-        else:
-            message["set_leds_colour"] = "green"
+        # if robot.battery_voltage < robot.BAT_LOW_VOLTAGE:
+        #     message["set_leds_colour"] = "red"
+        # else:
+        #     message["set_leds_colour"] = "green"
 
         # Send command message
         await robot.connection.send(json.dumps(message))
@@ -493,7 +690,7 @@ if __name__ == "__main__":
 
     # Specify robot IDs to work with here. For example for robots 11-15 use:
     #  robot_ids = range(11, 16)
-    robot_ids = range(0, 0)
+    robot_ids = range(31, 36)
 
     if len(robot_ids) == 0:
         raise Exception(f"Enter range of robot IDs to control on line {inspect.currentframe().f_lineno - 3}, "
