@@ -5,6 +5,8 @@ from operator import ne
 from turtle import Vec2D, distance
 
 from requests import head
+from turtle import right
+
 from robots import robots, server_none, server_york, server_manchester, server_sheffield
 
 import asyncio
@@ -108,6 +110,8 @@ class Robot:
         self.orientation = 0
         self.neighbours = {}#
         self.worth = -1
+
+        self.mode = RobotMode.SEARCH
 
         self.teleop = False
         self.state = RobotState.STOP
@@ -285,6 +289,71 @@ async def get_data(robot):
     except Exception as e:
         print(f"{type(e).__name__}: {e}")
 
+class RobotMode(Enum):
+    SEARCH = 1
+    WAIT = 2
+    STOP = 3
+    HEADTOTARGET = 4
+
+def RobotUpdate(robot):
+    #Update the bot depending on the mode
+    #FSM
+    if robot.mode == RobotMode.SEARCH:
+        left, right = RobotSearch(robot)
+
+    elif robot.mode == RobotMode.HEADTOTARGET:
+        left, right = RobotHeadingToTarget(robot)
+    
+    elif robot.mode == RobotMode.STOP:
+        left, right = RobotStop(robot)
+    
+    return left, right
+
+def RobotSearch(robot):
+    #Random search
+    
+    if robot.state == RobotState.FORWARDS:
+        left = right = robot.MAX_SPEED
+        if (time.time() - robot.turn_time > 0.5) and any(ir > robot.ir_threshold for ir in robot.ir_readings):
+            robot.turn_time = time.time()
+            robot.state = random.choice((RobotState.LEFT, RobotState.RIGHT))
+    elif robot.state == RobotState.BACKWARDS:
+        left = right = -robot.MAX_SPEED
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.LEFT:
+        left = -robot.MAX_SPEED
+        right = robot.MAX_SPEED
+        if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.RIGHT:
+        left = robot.MAX_SPEED
+        right = -robot.MAX_SPEED
+        if time.time() - robot.turn_time > random.uniform(0.5, 1.0):
+            robot.turn_time = time.time()
+            robot.state = RobotState.FORWARDS
+    elif robot.state == RobotState.STOP:
+        left = right = 0
+        robot.turn_time = time.time()
+        robot.state = RobotState.FORWARDS
+
+    return left, right
+
+def RobotHeadingToTarget(robot):
+    #Head to target
+
+    print("heading to target")
+
+def RobotStop(robot):
+    #Stop the robot
+    print("stop")
+
+
+
+    left = right = 0
+    
+    return left, right
 
 #Psudocode found at https://vergenet.net/~conrad/boids/pseudocode.html
 
@@ -501,7 +570,9 @@ async def send_commands(robot):
             print(left,right)
             #left,right = 0,0
         else:
-            pass
+          
+            left, right = RobotUpdate(robot)
+
 
         message["set_motor_speeds"] = {}
         message["set_motor_speeds"]["left"] = left
